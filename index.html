@@ -314,13 +314,17 @@
      * Communicates securely via Fetch POST with the text/plain payload workaround 
      * to prevent CORS preflight blockages by Google Apps Script.
      */
-    async function callBackend(action, parameters = {}) {
-      try {
-        const response = await fetch(GAS_WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action, parameters })
-        });
+async function callBackend(action, parameters = {}) {
+  try {
+    const response = await fetch(GAS_WEB_APP_URL, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer sb_publishable_1_n9Sh9UJi8U0xJgcnISyg_E-Hf0BLS',
+        'apikey': 'sb_publishable_1_n9Sh9UJi8U0xJgcnISyg_E-Hf0BLS'
+      },
+      body: JSON.stringify({ action, parameters })
+    });
         const result = await response.json();
         if (result.error) throw new Error(result.error);
         return result.data;
