@@ -89,6 +89,7 @@
     .modal.s{display:flex}
     #profileModal{z-index:100;}
     #subjectModal{z-index:9999 !important;}
+    #addFailModal{z-index:9999 !important;}
     .modal-card{width:min(1400px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:24px;border:1px solid var(--line);box-shadow:0 24px 48px rgba(0,0,0,0.1);padding:24px}
     .small{font-size:13px;color:var(--muted)}
     .ribbon{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800;border:1px solid #e4e7ec;background:#f8fafc;color:#475467}
@@ -252,6 +253,16 @@
     </div>
   </div>
 
+  <div id="addFailModal" class="modal">
+    <div class="modal-card" style="max-width:700px">
+      <div class="row" style="justify-content:space-between;margin-bottom:14px">
+        <h3 id="addFailModalTitle" style="margin:0; font-size:20px; font-weight:800;">Add to Fail List</h3>
+        <button class="btn s" onclick="closeAddFailModal()">Close</button>
+      </div>
+      <div id="addFailModalBody"></div>
+    </div>
+  </div>
+
   <div id="profileModal" class="modal">
     <div class="modal-card">
       <div class="row" style="justify-content:space-between; margin-bottom:20px; border-bottom:1px solid #edf2f7; padding-bottom:16px;">
@@ -341,8 +352,11 @@
       init: null,
       filters: JSON.parse(localStorage.getItem('adminFilters') || '{}'),
       activeTab: 'dash',
-      profile: null
+      profile: null,
+      addFail: null
     };
+
+    const FAIL_TRACKER_YEARS = ['2021_2022','2022_2023','2023_2024','2024_2025','2025_2026','2026_2027','2027_2028','2028_2029'];
 
     function id(x){ return document.getElementById(x); }
 
@@ -1368,11 +1382,13 @@ function exportListToWord(id,title){
         ? `<button class="btn s" style="padding:6px 12px;font-size:12px; background:#b42318; color:#fff; border:none; border-radius:8px; font-weight:700;" onclick='editSubject(${JSON.stringify(code)}, ${JSON.stringify(sub)})'>Details</button>`
         : '<span style="color:var(--muted); font-size:12px;">—</span>';
 
+      var addFailBtn = `<button class="btn s" style="padding:6px 12px;font-size:12px; background:#fff7ed; color:#b54708; border:1px solid #fed7aa; border-radius:8px; font-weight:700;" onclick='openAddFailModal(${JSON.stringify(code)}, ${JSON.stringify(sub)})'>+ Fail List</button>`;
+
       return `<tr style="background:${rowBg}; border-left:${isFail ? '4px solid #b42318' : 'none'};">
         <td style="padding:14px 16px; font-family:monospace; font-weight:800; color:var(--muted); font-size:13px; border-bottom:${rowBorder};">${escapeHtml(sub.moduleCode || '')}</td>
         <td style="padding:14px 16px; font-weight:700; color:var(--ink); font-size:14px; border-bottom:${rowBorder};">${escapeHtml(sub.subject || '')}</td>
         <td style="padding:14px 16px; text-align:center; border-bottom:${rowBorder};">${badge(sub.status)}</td>
-        <td style="padding:14px 16px; text-align:center; border-bottom:${rowBorder};">${detailBtn}</td>
+        <td style="padding:14px 16px; text-align:center; border-bottom:${rowBorder};"><div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap;">${detailBtn}${addFailBtn}</div></td>
       </tr>`;
     }
 
@@ -1455,6 +1471,77 @@ function exportListToWord(id,title){
         '</div>' + alertHtml + yearsHtml;
 
       id('subjectModal').classList.add('s');
+    }
+
+    function openAddFailModal(code, sub){
+      state.addFail = { code: code, moduleCode: sub.moduleCode, subject: sub.subject };
+
+      var yearsHtml = FAIL_TRACKER_YEARS.map(function(y){
+        var label = y.replace('_', '-');
+        return '<div>' +
+          '<label style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);">' + label + '</label>' +
+          '<select id="fy_' + y + '">' +
+            '<option value="">-</option>' +
+            '<option value="Fail">Fail</option>' +
+            '<option value="Absent">Absent</option>' +
+            '<option value="Postponed">Postponed</option>' +
+            '<option value="Ongoing">Ongoing</option>' +
+          '</select>' +
+        '</div>';
+      }).join('');
+
+      id('addFailModalTitle').textContent = 'Add to Fail List — ' + (sub.subject || sub.moduleCode || '');
+      id('addFailModalBody').innerHTML =
+        '<div class="grid g2" style="gap:14px;">' +
+          field('Student Code', code) +
+          field('Module Code', sub.moduleCode) +
+        '</div>' +
+        '<div class="grid g2" style="gap:14px;margin-top:14px;">' +
+          '<div><label style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);">Pre-Final Grade</label><input id="fPreFinal" placeholder="e.g. 35"></div>' +
+          '<div><label style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);">Invoice Number</label><input id="fInvoice" placeholder="Optional"></div>' +
+        '</div>' +
+        '<div style="margin-top:14px;"><label style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);">Status</label>' +
+          '<select id="fStatus"><option value="Fail">Fail</option><option value="Passed">Passed</option></select>' +
+        '</div>' +
+        '<div style="margin-top:16px;"><div style="font-weight:700;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Academic Year Status (click a year to set Fail / Absent / Postponed / Ongoing)</div>' +
+          '<div class="grid g4" style="gap:10px;">' + yearsHtml + '</div>' +
+        '</div>' +
+        '<div class="row" style="justify-content:flex-end;margin-top:20px;gap:8px;">' +
+          '<button class="btn s" onclick="closeAddFailModal()">Cancel</button>' +
+          '<button class="btn p" onclick="saveAddFail()">Save</button>' +
+        '</div>' +
+        '<div id="addFailStatus" class="small" style="margin-top:10px;color:var(--muted)"></div>';
+
+      id('addFailModal').classList.add('s');
+    }
+
+    function closeAddFailModal(){ id('addFailModal').classList.remove('s'); state.addFail = null; }
+
+    function saveAddFail(){
+      var st = state.addFail || {};
+      if (!st.code || !st.moduleCode) { id('addFailStatus').textContent = 'Missing student or module reference.'; return; }
+
+      var payload = {
+        student_unique_code: st.code,
+        module_code: st.moduleCode,
+        pre_final_grade: id('fPreFinal').value,
+        invoice_number: id('fInvoice').value,
+        status: id('fStatus').value
+      };
+      FAIL_TRACKER_YEARS.forEach(function(y){
+        var el = id('fy_' + y);
+        var v = el ? el.value : '';
+        if (v) payload['year_' + y] = v;
+      });
+
+      id('addFailStatus').textContent = 'Saving...';
+      callBackend('addFailureRecord', { payload: payload, adminCode: state.adminCode })
+        .then(function(){
+          closeAddFailModal();
+          setStatus('Failure record added successfully.', true);
+          openProfile(st.code);
+        })
+        .catch(function(e){ id('addFailStatus').textContent = e && e.message ? e.message : 'Save failed.'; });
     }
 
     function togglePostpone(code, moduleCode, active){
