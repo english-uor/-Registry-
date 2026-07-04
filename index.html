@@ -90,6 +90,7 @@
     #profileModal{z-index:100;}
     #subjectModal{z-index:9999 !important;}
     #addFailModal{z-index:9999 !important;}
+    #postponeYearModal{z-index:9999 !important;}
     .modal-card{width:min(1400px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:24px;border:1px solid var(--line);box-shadow:0 24px 48px rgba(0,0,0,0.1);padding:24px}
     .small{font-size:13px;color:var(--muted)}
     .ribbon{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800;border:1px solid #e4e7ec;background:#f8fafc;color:#475467}
@@ -135,12 +136,29 @@
       .tab{padding:8px 12px; font-size:13px}
       table{font-size:13px}
       th,td{padding:10px 8px}
-      .modal-card{padding:16px; border-radius:16px}
+      .modal-card{padding:16px; border-radius:16px; width:100%; max-height:96vh}
       .semester-head{flex-direction:column; align-items:flex-start; gap:8px}
+      input,select,textarea{font-size:16px}
     }
     /* Improve phone touch targets */
     .btn{min-height:44px; touch-action:manipulation}
     input,select,textarea{min-height:44px}
+
+    /* Extra tightening for small phones */
+    @media (max-width:480px){
+      .wrap{padding:8px}
+      .g4{grid-template-columns:1fr!important}
+      .card{padding:12px; border-radius:14px}
+      .modal-card{padding:12px; border-radius:12px}
+      .tabs{gap:6px}
+      .tab{padding:8px 10px; font-size:12px}
+      .metric{padding:16px 12px}
+      .metric .v{font-size:24px}
+      table{font-size:12px}
+      th,td{padding:8px 6px}
+      h1{font-size:16px!important}
+      h2{font-size:15px!important}
+    }
 
   </style>
 </head>
@@ -273,6 +291,16 @@
     </div>
   </div>
 
+  <div id="postponeYearModal" class="modal">
+    <div class="modal-card" style="max-width:520px">
+      <div class="row" style="justify-content:space-between;margin-bottom:14px">
+        <h3 style="margin:0; font-size:20px; font-weight:800;">Postpone Academic Year</h3>
+        <button class="btn s" onclick="closePostponeYearModal()">Close</button>
+      </div>
+      <div id="postponeYearModalBody"></div>
+    </div>
+  </div>
+
   <div id="broadcastModal" class="modal">
     <div class="modal-card" style="max-width:640px">
       <div class="row" style="justify-content:space-between;margin-bottom:14px">
@@ -353,7 +381,8 @@
       filters: JSON.parse(localStorage.getItem('adminFilters') || '{}'),
       activeTab: 'dash',
       profile: null,
-      addFail: null
+      addFail: null,
+      postponeYear: null
     };
 
     const FAIL_TRACKER_YEARS = ['2021_2022','2022_2023','2023_2024','2024_2025','2025_2026','2026_2027','2027_2028','2028_2029'];
@@ -672,9 +701,11 @@
               </td>
               <td style="padding: 16px; color:var(--brand); font-weight:600; font-size: 14px;">${escapeHtml(x.email || '-')}</td>
               <td style="padding: 16px;">${subs}</td>
-              <td style="padding: 16px; text-align:right; white-space: nowrap;">
-                 <button class="btn s" style="color:var(--brand2); border-color:#c7d7fe; background:#eef4ff; padding:8px 16px; font-size:13px; font-weight:700; border-radius:8px; margin-right:8px; transition: all 0.2s;" onmouseover="this.style.background='#d1e0ff'" onmouseout="this.style.background='#eef4ff'" onclick="editTeacher('${escapeJs(x.uniqueCode)}')">Edit</button>
-                 <button class="btn s" style="color:var(--brand2); border-color:#c7d7fe; background:#eef4ff; padding:8px 16px; font-size:13px; font-weight:700; border-radius:8px; transition: all 0.2s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eef4ff'" onclick="window.open('mailto:${escapeHtml(x.email)}?subject=University Notice')">Email</button>
+              <td style="padding: 16px; text-align:right;">
+                 <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                   <button class="btn s" style="color:var(--brand2); border-color:#c7d7fe; background:#eef4ff; padding:8px 16px; font-size:13px; font-weight:700; border-radius:8px; transition: all 0.2s;" onmouseover="this.style.background='#d1e0ff'" onmouseout="this.style.background='#eef4ff'" onclick="editTeacher('${escapeJs(x.uniqueCode)}')">Edit</button>
+                   <button class="btn s" style="color:var(--brand2); border-color:#c7d7fe; background:#eef4ff; padding:8px 16px; font-size:13px; font-weight:700; border-radius:8px; transition: all 0.2s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eef4ff'" onclick='openTeacherProfile(${JSON.stringify(x)})'>Details</button>
+                 </div>
               </td>
             </tr>
           `;
@@ -1185,6 +1216,33 @@ function exportListToWord(id,title){
        alert('System routing to Teacher Profile editor for UID: ' + code); 
     }
 
+    function openTeacherProfile(t) {
+      var subs = (t.subjects || []).map(function(s){ return '<span class="badge b-info" style="margin:2px 4px 2px 0;">' + escapeHtml(s) + '</span>'; }).join('');
+      if (!subs) subs = '<span style="color:var(--muted); font-size:13px; font-style:italic;">No Subjects Assigned</span>';
+
+      id('pmTitle').innerHTML = escapeHtml(t.name || 'Teacher Profile') + ' <span style="color:var(--muted); font-size:16px; margin-left:12px; font-weight:600;">#' + escapeHtml(t.uniqueCode || '') + '</span>';
+      id('pmBody').innerHTML =
+        '<div class="card" style="box-shadow:0 8px 24px rgba(16,24,40,0.06); border:2px solid #e4e7ec; background:linear-gradient(180deg, #fff 0%, #fbfdff 100%); padding:24px; border-radius:20px;">' +
+          '<div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; padding-bottom:16px; border-bottom:2px solid #f2f4f7;">' +
+            '<div style="width:48px; height:48px; border-radius:14px; background:linear-gradient(135deg, #067647, #055a36); display:flex; align-items:center; justify-content:center; color:#fff; font-size:24px;">👩‍🏫</div>' +
+            '<div>' +
+              '<h3 style="margin:0; font-size:20px; font-weight:900; color:var(--ink); letter-spacing:-0.3px;">Faculty Member Information</h3>' +
+              '<div style="font-size:13px; color:var(--muted); margin-top:2px; font-weight:600;">Teacher Record • ' + escapeHtml(t.uniqueCode || '') + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="grid" style="grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:18px;">' +
+            field('Name', t.name) +
+            field('Email', t.email) +
+            field('Title', t.title) +
+            field('Phone', t.phone) +
+            field('Birthday', t.birthday || '-') +
+          '</div>' +
+          '<div style="margin-top:20px;"><div style="font-weight:700;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Assigned Subjects</div>' + subs + '</div>' +
+        '</div>';
+
+      id('profileModal').classList.add('s');
+    }
+
     function deleteTeacher(code) { 
        if(confirm('SECURITY WARNING:\n\nAre you sure you want to permanently delete this teacher from the registry? This action cannot be easily undone.')) {
           alert('Teacher deletion API triggered for UID: ' + code + '\n(Backend link pending)');
@@ -1362,7 +1420,95 @@ function exportListToWord(id,title){
           `;
           }).join('')}
         </div>
+
+        ${academicYearsHtml(s, p.academicYears || [])}
       `;
+    }
+
+    function academicYearsHtml(s, years){
+      if (!years.length) return '';
+      return `
+        <div class="card" style="margin-top:20px; padding:0; overflow:hidden; border:2px solid #e4e7ec; border-radius:20px;">
+          <div style="padding:20px 24px; background:linear-gradient(90deg, #f8fafc, #fff); border-bottom:2px solid #f2f4f7;">
+            <h3 style="margin:0; font-size:18px; font-weight:900; color:var(--ink);">Academic Year Postponement</h3>
+            <div class="small" style="margin-top:4px;">Select a year to record a postponement in the postponement_year registry.</div>
+          </div>
+          <div class="table-wrap" style="border:none; border-radius:0;">
+            <table style="margin:0; width:100%;">
+              <thead>
+                <tr style="background:#f8fafc;">
+                  <th style="padding:12px 16px;">Academic Year</th>
+                  <th style="padding:12px 16px; text-align:center;">Type</th>
+                  <th style="padding:12px 16px; text-align:center;">Status</th>
+                  <th style="padding:12px 16px; text-align:center;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${years.map(y => `
+                  <tr>
+                    <td style="padding:12px 16px; font-weight:700;">${escapeHtml(y.academicYear)}</td>
+                    <td style="padding:12px 16px; text-align:center;">${y.isPostponed ? escapeHtml(y.postponedType || '-') : '<span style="color:var(--muted);">-</span>'}</td>
+                    <td style="padding:12px 16px; text-align:center;">${y.isPostponed ? '<span class="badge b-warn">Postponed</span>' : '<span class="badge b-ok">Regular</span>'}</td>
+                    <td style="padding:12px 16px; text-align:center;">
+                      ${y.isPostponed
+                        ? '<span style="color:var(--muted); font-size:12px;">—</span>'
+                        : `<button class="btn s" style="padding:6px 12px;font-size:12px; background:#fff7ed; color:#b54708; border:1px solid #fed7aa; border-radius:8px; font-weight:700;" onclick='openPostponeYearModal(${JSON.stringify(s.uniqueCode)}, ${JSON.stringify(y.academicYear)})'>Postpone This Year</button>`}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function openPostponeYearModal(code, year){
+      state.postponeYear = { code: code };
+      id('postponeYearModalBody').innerHTML =
+        '<div class="grid" style="gap:14px;">' +
+          field('Student Unique Code', code) +
+          '<div><label style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);">Academic Year</label><input id="pyYear" value="' + escapeHtml(year || '') + '"></div>' +
+          '<div><label style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);">Postponed Type</label>' +
+            '<select id="pyType">' +
+              '<option value="Full-Year">Full-Year</option>' +
+              '<option value="Fall Semester">Fall Semester</option>' +
+              '<option value="Spring Semester">Spring Semester</option>' +
+            '</select>' +
+          '</div>' +
+          field('Admin Status', 'Postponed') +
+        '</div>' +
+        '<div class="row" style="justify-content:flex-end;margin-top:20px;gap:8px;">' +
+          '<button class="btn s" onclick="closePostponeYearModal()">Cancel</button>' +
+          '<button class="btn p" onclick="savePostponeYear()">Save</button>' +
+        '</div>' +
+        '<div id="pyStatus" class="small" style="margin-top:10px;color:var(--muted)"></div>';
+
+      id('postponeYearModal').classList.add('s');
+    }
+
+    function closePostponeYearModal(){ id('postponeYearModal').classList.remove('s'); state.postponeYear = null; }
+
+    function savePostponeYear(){
+      var st = state.postponeYear || {};
+      if (!st.code) { id('pyStatus').textContent = 'Missing student reference.'; return; }
+      var year = id('pyYear').value.trim();
+      if (!year) { id('pyStatus').textContent = 'Please enter the academic year.'; return; }
+
+      var payload = {
+        student_unique_code: st.code,
+        academic_year: year,
+        postpone_type: id('pyType').value
+      };
+
+      id('pyStatus').textContent = 'Saving...';
+      callBackend('addPostponementYear', { payload: payload, adminCode: state.adminCode })
+        .then(function(){
+          closePostponeYearModal();
+          setStatus('Academic year postponement recorded successfully.', true);
+          openProfile(st.code);
+        })
+        .catch(function(e){ id('pyStatus').textContent = e && e.message ? e.message : 'Save failed.'; });
     }
 
     function field(k,v){ return `<div style="background:#f8fafc; padding:12px 14px; border-radius:12px; border:1px solid #e4e7ec;"><div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:4px;">${escapeHtml(k)}</div><div style="font-size:15px; color:#101828; font-weight:600;">${escapeHtml(v == null || v === '' ? '-' : v)}</div></div>`; }
@@ -1378,11 +1524,16 @@ function exportListToWord(id,title){
       var rowBg = isFail ? '#fef3f2' : sub.status === 'pass' ? '#f6fef9' : '#fff';
       var rowBorder = isFail ? '2px solid #fecdca' : '1px solid #f2f4f7';
 
+      // Already has a fail-tracker record for this subject (fail / limit reached / postponed / logged attempts)
+      var alreadyRegistered = isFail || sub.status === 'postponed' || (sub.attempts && sub.attempts > 0) || (sub.failures && sub.failures.length > 0);
+
       var detailBtn = showDetail
         ? `<button class="btn s" style="padding:6px 12px;font-size:12px; background:#b42318; color:#fff; border:none; border-radius:8px; font-weight:700;" onclick='editSubject(${JSON.stringify(code)}, ${JSON.stringify(sub)})'>Details</button>`
         : '<span style="color:var(--muted); font-size:12px;">—</span>';
 
-      var addFailBtn = `<button class="btn s" style="padding:6px 12px;font-size:12px; background:#fff7ed; color:#b54708; border:1px solid #fed7aa; border-radius:8px; font-weight:700;" onclick='openAddFailModal(${JSON.stringify(code)}, ${JSON.stringify(sub)})'>+ Fail List</button>`;
+      var addFailBtn = alreadyRegistered
+        ? ''
+        : `<button class="btn s" style="padding:6px 12px;font-size:12px; background:#fff7ed; color:#b54708; border:1px solid #fed7aa; border-radius:8px; font-weight:700;" onclick='openAddFailModal(${JSON.stringify(code)}, ${JSON.stringify(sub)})'>+ Fail List</button>`;
 
       return `<tr style="background:${rowBg}; border-left:${isFail ? '4px solid #b42318' : 'none'};">
         <td style="padding:14px 16px; font-family:monospace; font-weight:800; color:var(--muted); font-size:13px; border-bottom:${rowBorder};">${escapeHtml(sub.moduleCode || '')}</td>
@@ -1468,47 +1619,81 @@ function exportListToWord(id,title){
           field('Attempts Used',  (sub.attempts || 0) + ' / ' + maxAttempts) +
           field('Invoice Number', sub.invoiceNumber || 'None') +
           field('Current Status', sub.status || '-') +
-        '</div>' + alertHtml + yearsHtml;
+        '</div>' + alertHtml + yearsHtml +
+        '<div class="row" style="justify-content:flex-end;margin-top:20px;">' +
+          '<button class="btn p" onclick=\'openEditFailModal(' + JSON.stringify(code) + ', ' + JSON.stringify(sub) + ')\'>Edit</button>' +
+        '</div>';
 
       id('subjectModal').classList.add('s');
     }
 
+    function yearLabelToKey(label){
+      // "2024-2025" -> "2024_2025"
+      var m = String(label || '').match(/(\d{4})\D+(\d{4})/);
+      return m ? (m[1] + '_' + m[2]) : '';
+    }
+
     function openAddFailModal(code, sub){
-      state.addFail = { code: code, moduleCode: sub.moduleCode, subject: sub.subject };
+      state.addFail = { code: code, moduleCode: sub.moduleCode, subject: sub.subject, isEdit: false };
+      renderAddFailModal(sub, {});
+    }
+
+    function openEditFailModal(code, sub){
+      closeSubjectModal();
+      state.addFail = { code: code, moduleCode: sub.moduleCode, subject: sub.subject, isEdit: true };
+
+      // Pre-fill per-year statuses from the subject's existing failure records
+      var prefillYears = {};
+      (sub.failures || []).forEach(function(f){
+        var key = yearLabelToKey(f.academicYear);
+        if (key) prefillYears[key] = f.attempt1 || '';
+      });
+
+      renderAddFailModal(sub, {
+        preFinal: sub.preFinal || '',
+        invoiceNumber: sub.invoiceNumber || '',
+        status: (sub.status === 'pass') ? 'Passed' : 'Fail',
+        years: prefillYears
+      });
+    }
+
+    function renderAddFailModal(sub, prefill){
+      var isEdit = state.addFail && state.addFail.isEdit;
+      var code = state.addFail.code;
+      prefill = prefill || {};
+      var prefillYears = prefill.years || {};
 
       var yearsHtml = FAIL_TRACKER_YEARS.map(function(y){
         var label = y.replace('_', '-');
+        var current = prefillYears[y] || '';
+        var opt = function(v, text){ return '<option value="' + v + '"' + (current === v ? ' selected' : '') + '>' + text + '</option>'; };
         return '<div>' +
           '<label style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);">' + label + '</label>' +
           '<select id="fy_' + y + '">' +
-            '<option value="">-</option>' +
-            '<option value="Fail">Fail</option>' +
-            '<option value="Absent">Absent</option>' +
-            '<option value="Postponed">Postponed</option>' +
-            '<option value="Ongoing">Ongoing</option>' +
+            opt('', '-') + opt('Fail', 'Fail') + opt('Absent', 'Absent') + opt('Postponed', 'Postponed') + opt('Ongoing', 'Ongoing') +
           '</select>' +
         '</div>';
       }).join('');
 
-      id('addFailModalTitle').textContent = 'Add to Fail List — ' + (sub.subject || sub.moduleCode || '');
+      id('addFailModalTitle').textContent = (isEdit ? 'Edit Fail Record — ' : 'Add to Fail List — ') + (sub.subject || sub.moduleCode || '');
       id('addFailModalBody').innerHTML =
         '<div class="grid g2" style="gap:14px;">' +
           field('Student Code', code) +
           field('Module Code', sub.moduleCode) +
         '</div>' +
         '<div class="grid g2" style="gap:14px;margin-top:14px;">' +
-          '<div><label style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);">Pre-Final Grade</label><input id="fPreFinal" placeholder="e.g. 35"></div>' +
-          '<div><label style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);">Invoice Number</label><input id="fInvoice" placeholder="Optional"></div>' +
+          '<div><label style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);">Pre-Final Grade</label><input id="fPreFinal" placeholder="e.g. 35" value="' + escapeHtml(prefill.preFinal || '') + '"></div>' +
+          '<div><label style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);">Invoice Number</label><input id="fInvoice" placeholder="Optional" value="' + escapeHtml(prefill.invoiceNumber || '') + '"></div>' +
         '</div>' +
         '<div style="margin-top:14px;"><label style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--muted);">Status</label>' +
-          '<select id="fStatus"><option value="Fail">Fail</option><option value="Passed">Passed</option></select>' +
+          '<select id="fStatus"><option value="Fail"' + (prefill.status === 'Fail' || !prefill.status ? ' selected' : '') + '>Fail</option><option value="Passed"' + (prefill.status === 'Passed' ? ' selected' : '') + '>Passed</option></select>' +
         '</div>' +
         '<div style="margin-top:16px;"><div style="font-weight:700;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Academic Year Status (click a year to set Fail / Absent / Postponed / Ongoing)</div>' +
           '<div class="grid g4" style="gap:10px;">' + yearsHtml + '</div>' +
         '</div>' +
         '<div class="row" style="justify-content:flex-end;margin-top:20px;gap:8px;">' +
           '<button class="btn s" onclick="closeAddFailModal()">Cancel</button>' +
-          '<button class="btn p" onclick="saveAddFail()">Save</button>' +
+          '<button class="btn p" onclick="saveAddFail()">' + (isEdit ? 'Save Changes' : 'Save') + '</button>' +
         '</div>' +
         '<div id="addFailStatus" class="small" style="margin-top:10px;color:var(--muted)"></div>';
 
@@ -1534,11 +1719,12 @@ function exportListToWord(id,title){
         if (v) payload['year_' + y] = v;
       });
 
+      var action = st.isEdit ? 'editFailureRecord' : 'addFailureRecord';
       id('addFailStatus').textContent = 'Saving...';
-      callBackend('addFailureRecord', { payload: payload, adminCode: state.adminCode })
+      callBackend(action, { payload: payload, adminCode: state.adminCode })
         .then(function(){
           closeAddFailModal();
-          setStatus('Failure record added successfully.', true);
+          setStatus(st.isEdit ? 'Failure record updated successfully.' : 'Failure record added successfully.', true);
           openProfile(st.code);
         })
         .catch(function(e){ id('addFailStatus').textContent = e && e.message ? e.message : 'Save failed.'; });
