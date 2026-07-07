@@ -993,9 +993,7 @@ function buildList6Section(l){
   const yearOpts = years.map(y=>'<option value="'+escapeHtml(y)+'">'+escapeHtml(y)+'</option>').join('');
   const stageOpts = stages.map(s=>'<option value="'+escapeHtml(s)+'">Stage '+escapeHtml(s)+'</option>').join('');
   const subjectOpts = subjects.map(s=>'<option value="'+escapeHtml(s)+'">'+escapeHtml(s)+'</option>').join('');
-  const names = window.__OVERLOADED_NAMES;
-  const banner = names.length ? '<div style="padding:14px 18px;background:#fef3f2;border:1px solid #fecdca;border-radius:12px;color:#b42318;font-weight:700;margin-bottom:16px;">⚠ Overloaded Students: '+names.map(n=>escapeHtml(n)).join(', ')+'</div>' : '';
-  return '<div class="card" style="margin-top:24px"><div style="padding:18px;border-bottom:1px solid var(--line)"><h3 style="margin:0 0 12px">List 6: Students with Failing Subjects</h3>'+
+return '<div class="card" style="margin-top:24px"><div style="padding:18px;border-bottom:1px solid var(--line)"><h3 style="margin:0 0 12px">List 6: Students with Failing Subjects</h3>'+
   '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:end">'+
   '<div class="grow"><label class="small">Year</label><select id="l6Year"><option value="">All Years</option>'+yearOpts+'</select></div>'+
   '<div class="grow"><label class="small">Stage</label><select id="l6Stage"><option value="">All Stages</option>'+stageOpts+'</select></div>'+
@@ -1005,7 +1003,7 @@ function buildList6Section(l){
   '<button class="btn s" onclick="exportList6ToExcel()">Excel</button>'+
   '<button class="btn s" onclick="exportList6ToWord()">Word</button>'+
   '</div></div>'+
-  '<div style="padding:18px">'+banner+'<div id="list6TableWrap">'+buildFailDetailTable(raw)+'</div></div></div>';
+  '<div style="padding:18px"><div id="list6TableWrap">'+buildFailDetailTable(raw)+'</div></div></div>';
 }
 
 function buildFailDetailTable(arr){
